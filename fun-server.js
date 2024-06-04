@@ -1,3 +1,4 @@
+const fs = require("fs");
 const fastify = require("fastify")({ logger: false });
 const os = require("os");
 const crypto = require("crypto");
@@ -32,9 +33,9 @@ const Users = {
 const Messages = {
   messages: [],
   addMessage: function (data) {
-    const { source, destination, message } = data;
+    const { source, sourceName, destination, destinationName, message } = data;
     const id = getRandomIdUUID();
-    const newMessage = { id, source, destination, message };
+    const newMessage = { id, source, sourceName, destination, destinationName, message };
     this.messages.push(newMessage);
   },
   getMessages: function (destination) {
@@ -67,20 +68,26 @@ function getLocalIpAddress() {
   return "127.0.0.1";
 }
 
-// Define a default "empty" route
-fastify.get("/", async (request, reply) => {
-  // Return response
-  reply
-    .code(200)
-    .header("Content-Type", "text/html; charset=utf-8")
-    .send(`<h1>Hello user at ${request.ip}</h1>`);
+fastify.get("/", (request, reply) => {
+  fs.readFile(`${__dirname}/index.html`, (err, data) => {
+    if (err) {
+      reply
+        .code(500)
+        .header("Content-Type", "text/html; charset=utf-8")
+        .send("<h1>Server error.</h1>");
+    } else {
+      reply
+        .code(200)
+        .header("Content-Type", "text/html; charset=utf-8")
+        .send(data);
+    }
+  });
 });
 
-fastify.post("/test", async (request, reply) => {
+fastify.get("/test", async (request, reply) => {
   const { ip } = request;
-  const { message } = request.body;
-  const data = { ip, message };
-  console.log(`Test message from ${ip}: ${message}`);
+  const data = { ip };
+  console.log(`Test connection from ${ip}`);
   // Return response
   reply
     .code(200)
@@ -97,9 +104,11 @@ fastify.post("/user/connect", async (request, reply) => {
       .header("Content-Type", "application/json;charset=utf-8")
       .send({ error: "Empty name not supported", statusCode: 409, data: {} });
   }
-  const data = { ip, name };
-  const id = Users.addUser(data);
-  data.id = id;
+  const id = Users.addUser({ ip, name });
+  const users = Users.users.map((user) => {
+    return { name: user.name, id: user.id };
+  });
+  const data = { ip, name, users, id };
   console.log(
     `User ${name} (${id}) connected from ${ip} - total users: ${Users.users.length}`
   );
@@ -149,7 +158,9 @@ fastify.post("/user/message", async (request, reply) => {
   } else {
     Messages.addMessage({
       source: sourceUser.id,
+      sourceName: sourceUser.name,
       destination: destinationUser.id,
+      destinationName: destinationUser.name,
       message,
     });
     const action = `Message sent from ${sourceUser.name} to ${destinationUser.name}`;
