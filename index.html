@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Message Server</title>
+  </head>
+  <body>
+    <h1>Messaging Server</h1>
+    <p>
+      Messaging Server is a simple server that supports messaging other local
+      users.
+    </p>
+    <div>
+      Server: <input type="text" id="server" />
+      <button onclick="testConnection()">Test</button>&nbsp;
+      <span id="test-output"></span>
+    </div>
+    <div>
+      Name: <input type="text" id="name" />
+      <button onclick="connect()">Connect</button>&nbsp;
+      <span id="connect-output"></span>
+    </div>
+    <div>
+      Message: <input type="text" id="message" />
+      <select id="users"></select>
+      <button onclick="getUsers()">Users</button>&nbsp;
+      <button onclick="sendMessage()">Send</button>&nbsp;
+      <button onclick="getMessages()">Get My Messages</button>&nbsp;
+      <span id="message-output"></span>
+      <div id="messages"></div>
+    </div>
+
+    <script>
+      async function createUsers(selectRef, users) {
+        selectRef.innerHTML = "";
+        users.forEach((user) => {
+          const option = document.createElement("option");
+          option.value = user.id;
+          option.text = user.name;
+          selectRef.appendChild(option);
+        });
+      }
+      function testConnection() {
+        console.log("Testing connection");
+        const server = document.querySelector("#server").value;
+        // const response = await fetch(`http://${server}/test`);
+        // const data = await response.json();
+
+        fetch(`http://${server}/test`)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data);
+            document.querySelector("#test-output").innerText = data.data.ip;
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+      async function connect() {
+        console.log("Connecting...");
+        const server = document.querySelector("#server").value;
+        const name = document.querySelector("#name").value;
+
+        const requestOptions = {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        };
+
+        fetch(`http://${server}/user/connect`, requestOptions)
+          .then((response) => response.json())
+          .then((data) => {
+            const output = `User ID: ${data.data.id}`;
+            document.querySelector("#connect-output").innerText = output;
+            if (data.data.users) {
+              createUsers(document.querySelector("#users"), data.data.users);
+            }
+            console.log("Connected.");
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+      async function getUsers() {
+        console.log("Getting users...");
+        const server = document.querySelector("#server").value;
+
+        fetch(`http://${server}/user/users`)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data);
+            const users = data.data.users;
+            createUsers(document.querySelector("#users"), users);
+            console.log("Users loaded.");
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+      async function sendMessage() {
+        console.log("Sending message...");
+        const server = document.querySelector("#server").value;
+        const name = document.querySelector("#name").value;
+        const destination = document.querySelector("#users").value;
+        const message = document.querySelector("#message").value;
+
+        const requestOptions = {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ destination, message }),
+        };
+
+        fetch(`http://${server}/user/message?name=${name}`, requestOptions)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data);
+            const output = `${data.data.action}`;
+            document.querySelector("#message-output").innerText = output;
+            console.log("Message sent.");
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+      async function getMessages() {
+        console.log("Getting messages...");
+        const server = document.querySelector("#server").value;
+        const name = document.querySelector("#name").value;
+
+        fetch(`http://${server}/user/messages?name=${name}`)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data);
+            const messages = data.data.messages;
+            const messagesRef = document.querySelector("#messages");
+            document.querySelector(
+              "#message-output"
+            ).innerText = `New messages: ${messages.length}`;
+            messagesRef.innerHTML = "";
+            messages.forEach((message) => {
+              const p = document.createElement("div");
+              p.innerText = `${message.sourceName}: ${message.message}`;
+              messagesRef.appendChild(p);
+            });
+            console.log("Messages loaded.");
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+      document.querySelector("#server").value = "192.168.56.1:8080";
+    </script>
+  </body>
+</html>
