@@ -1,5 +1,5 @@
 # fun-server
-1. Clone the repo: git clone <repo url>
+1. Clone the repo: git clone **repo-url**
 2. Change to repo folder: cd fun-server
 3. Install libraries: npm install
 4. Run server (nodemon): npm run start:dev
